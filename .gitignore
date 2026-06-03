@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.log
+.chrome-profile*/
+.env
+.venv/
+venv/
+daily_stock_analysis.zip

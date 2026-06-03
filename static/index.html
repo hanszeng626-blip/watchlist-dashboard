@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>自选股综合 Dashboard</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">A股 / 港股 / 美股</p>
+            <h1>自选股综合 Dashboard</h1>
+          </div>
+          <div class="summary" id="summary">
+            <span>等待输入</span>
+          </div>
+        </header>
+
+        <form class="input-panel" id="watchlist-form">
+          <label for="symbols">自选股</label>
+          <div class="input-row">
+            <textarea
+              id="symbols"
+              name="symbols"
+              spellcheck="false"
+              placeholder="示例：300620 300394 hk00700 AAPL TSLA&#10;支持空格、逗号、换行粘贴"
+            ></textarea>
+            <button type="submit" id="analyze-button">分析</button>
+          </div>
+          <div class="quick-actions">
+            <button type="button" data-sample="300620 300394 hk00700 AAPL TSLA">示例组合</button>
+            <button type="button" id="clear-button">清空</button>
+          </div>
+        </form>
+
+        <section class="status-line" id="status-line" aria-live="polite"></section>
+
+        <section class="market-section" data-market="A股">
+          <div class="section-head">
+            <h2>A股</h2>
+            <span id="count-a">0</span>
+          </div>
+          <div class="stock-grid" id="group-a"></div>
+        </section>
+
+        <section class="market-section" data-market="港股">
+          <div class="section-head">
+            <h2>港股</h2>
+            <span id="count-hk">0</span>
+          </div>
+          <div class="stock-grid" id="group-hk"></div>
+        </section>
+
+        <section class="market-section" data-market="美股">
+          <div class="section-head">
+            <h2>美股</h2>
+            <span id="count-us">0</span>
+          </div>
+          <div class="stock-grid" id="group-us"></div>
+        </section>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
