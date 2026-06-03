@@ -104,6 +104,8 @@ http://127.0.0.1:8765
 http://127.0.0.1:8765/?symbols=300620%20hk00700%20AAPL
 ```
 
+Windows 用户也可以双击 `start_dashboard.bat`，脚本会自动启动本地服务并打开 Dashboard 页面。
+
 ## 公网部署
 
 适合让其他人直接通过网址访问，不需要他们在本地安装 Python。
