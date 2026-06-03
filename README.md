@@ -1,10 +1,10 @@
 # 自选股综合 Dashboard
 
-本目录是基于 `daily_stock_analysis` 的功能思路落地的一页式本地看板。由于当前网络环境多次中断 GitHub 仓库包下载，先以轻量本地服务实现核心页面，后续可迁移到 `daily_stock_analysis` 的 Web 工作台中。
+一个一页式股票自选 Dashboard，支持 A股、港股、美股混合输入，按市场分组展示行情、趋势评分、风险、催化和持仓备注，并提供东方财富、同花顺、雪球、新浪财经入口。
 
 ## 功能
 
-- 在页面顶部输入或粘贴 A股、港股、美股代码。
+- 输入或粘贴 A股、港股、美股代码。
 - 自动识别示例：
   - A股：`300620`、`600519`、`SZ300620`、`SH600519`
   - 港股：`hk00700`、`00700.HK`、`700`
@@ -14,10 +14,12 @@
 - 每只股票提供持仓备注，保存在浏览器本地。
 - 每只股票提供东方财富、同花顺、雪球、新浪财经入口。
 
-## 运行
+## 本地运行
 
 ```powershell
-cd "D:\Finacial Project\watchlist_dashboard"
+git clone https://github.com/hanszeng626-blip/watchlist-dashboard.git
+cd watchlist-dashboard
+pip install -r requirements.txt
 python app.py
 ```
 
@@ -26,6 +28,42 @@ python app.py
 ```text
 http://127.0.0.1:8765
 ```
+
+也可以在 URL 中直接带入自选股：
+
+```text
+http://127.0.0.1:8765/?symbols=300620%20hk00700%20AAPL
+```
+
+## 公网部署
+
+本项目已经支持云平台部署。部署平台需要能运行 Python Web Service，并提供公网访问域名。
+
+### Render 部署
+
+1. 打开 Render，选择 New Web Service。
+2. 连接本仓库：`hanszeng626-blip/watchlist-dashboard`。
+3. Build Command 填：
+
+```bash
+pip install -r requirements.txt
+```
+
+4. Start Command 填：
+
+```bash
+python app.py
+```
+
+5. Environment Variable 增加：
+
+```text
+HOST=0.0.0.0
+```
+
+6. 部署完成后，Render 会生成一个公网 URL。
+
+仓库中也提供了 `render.yaml`，支持按 Render Blueprint 方式创建服务。
 
 ## 数据来源
 

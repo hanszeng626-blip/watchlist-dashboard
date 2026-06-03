@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -443,7 +444,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_json(404, {"error": "Not found"})
 
 
-def run(host: str = "127.0.0.1", port: int = 8765) -> None:
+def run(host: str | None = None, port: int | None = None) -> None:
+    host = host or os.environ.get("HOST", "127.0.0.1")
+    port = port or int(os.environ.get("PORT", "8765"))
     server = ThreadingHTTPServer((host, port), DashboardHandler)
     print(f"Watchlist dashboard: http://{host}:{port}")
     server.serve_forever()
