@@ -774,6 +774,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         static_files = {
             "/styles.css": ("styles.css", "text/css; charset=utf-8"),
             "/app.js": ("app.js", "application/javascript; charset=utf-8"),
+            "/lone-wolf-logo.png": ("lone-wolf-logo.png", "image/png"),
         }
         if parsed.path in static_files:
             filename, content_type = static_files[parsed.path]
