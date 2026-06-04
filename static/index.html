@@ -20,20 +20,37 @@
         </header>
 
         <form class="input-panel" id="watchlist-form">
-          <label for="symbols">自选股</label>
-          <div class="input-row">
-            <textarea
-              id="symbols"
-              name="symbols"
-              spellcheck="false"
-              placeholder="示例：300620 300394 hk00700 AAPL TSLA&#10;支持空格、逗号、换行粘贴"
-            ></textarea>
-            <button type="submit" id="analyze-button">分析</button>
+          <input type="hidden" id="symbols" name="symbols" />
+          <label>自选股录入</label>
+          <div class="entry-grid">
+            <label>
+              市场
+              <select id="entry-market" name="entry-market">
+                <option value="A股">A股</option>
+                <option value="港股">港股</option>
+                <option value="美股">美股</option>
+              </select>
+            </label>
+            <label>
+              股票代码
+              <input id="entry-symbol" name="entry-symbol" placeholder="如 300620 / 00700 / AAPL" autocomplete="off" />
+            </label>
+            <label>
+              持股成本
+              <input id="entry-cost" name="entry-cost" inputmode="decimal" placeholder="成本价，可选" />
+            </label>
+            <label>
+              持股数量
+              <input id="entry-shares" name="entry-shares" inputmode="decimal" placeholder="数量，可选" />
+            </label>
+            <button type="submit" id="analyze-button">加入并分析</button>
           </div>
           <div class="quick-actions">
             <button type="button" data-sample="300620 300394 hk00700 AAPL TSLA">示例组合</button>
+            <button type="button" id="analyze-current-button">刷新分析</button>
             <button type="button" id="clear-button">清空</button>
           </div>
+          <div class="watchlist-chips" id="watchlist-chips"></div>
         </form>
 
         <section class="status-line" id="status-line" aria-live="polite"></section>
@@ -76,6 +93,32 @@
               <div><span>总盈亏</span><strong>-</strong></div>
               <div><span>总体收益率</span><strong>-</strong></div>
             </div>
+            <form class="holding-form" id="holding-form">
+              <h3>添加持仓</h3>
+              <label>
+                市场
+                <select id="holding-market" name="holding-market">
+                  <option value="A股">A股</option>
+                  <option value="港股">港股</option>
+                  <option value="美股">美股</option>
+                </select>
+              </label>
+              <label>
+                股票代码
+                <input id="holding-symbol" name="holding-symbol" placeholder="如 300620 / hk00700 / AAPL" autocomplete="off" />
+              </label>
+              <div class="holding-form-row">
+                <label>
+                  持股成本
+                  <input id="holding-cost" name="holding-cost" inputmode="decimal" placeholder="成本价" />
+                </label>
+                <label>
+                  持股数量
+                  <input id="holding-shares" name="holding-shares" inputmode="decimal" placeholder="数量" />
+                </label>
+              </div>
+              <button type="submit">加入财富管理</button>
+            </form>
             <div class="wealth-advice" id="wealth-advice">等待输入持仓后生成财富管理建议。</div>
             <div class="wealth-list" id="wealth-list"></div>
           </aside>

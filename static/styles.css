@@ -39,9 +39,9 @@ body::before {
   content: "";
   position: fixed;
   inset: auto 0 0 0;
-  height: 260px;
+  height: 300px;
   pointer-events: none;
-  opacity: 0.34;
+  opacity: 0.18;
   z-index: 0;
   background:
     linear-gradient(142deg, transparent 0 16%, rgba(30, 65, 80, 0.18) 16% 18%, transparent 18% 100%),
@@ -50,9 +50,28 @@ body::before {
     linear-gradient(12deg, transparent 0 50%, rgba(37, 83, 95, 0.22) 50% 54%, transparent 54% 100%);
 }
 
+body::after {
+  content: "";
+  position: fixed;
+  left: -5vw;
+  right: -5vw;
+  bottom: 18px;
+  height: 180px;
+  pointer-events: none;
+  opacity: 0.13;
+  z-index: 0;
+  transform: rotate(-3deg);
+  background:
+    repeating-linear-gradient(90deg, rgba(145, 58, 48, 0.9) 0 30px, transparent 30px 54px),
+    linear-gradient(180deg, transparent 0 34px, rgba(145, 58, 48, 0.85) 34px 64px, transparent 64px 100%),
+    linear-gradient(12deg, transparent 0 42%, rgba(57, 82, 94, 0.8) 42% 50%, transparent 50% 100%),
+    linear-gradient(-10deg, transparent 0 58%, rgba(57, 82, 94, 0.6) 58% 64%, transparent 64% 100%);
+}
+
 button,
 textarea,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -153,8 +172,20 @@ h1 {
   gap: 12px;
 }
 
+.entry-grid {
+  display: grid;
+  grid-template-columns: 120px minmax(180px, 1fr) 150px 150px 126px;
+  gap: 10px;
+  align-items: end;
+}
+
+.entry-grid label {
+  margin: 0;
+}
+
 textarea,
-input {
+input,
+select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -175,8 +206,15 @@ input {
   padding: 0 9px;
 }
 
+select {
+  height: 34px;
+  margin-top: 4px;
+  padding: 0 9px;
+}
+
 textarea:focus,
-input:focus {
+input:focus,
+select:focus {
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(34, 94, 168, 0.14);
 }
@@ -212,6 +250,37 @@ button:hover {
 .quick-actions button {
   min-height: 34px;
   padding: 0 12px;
+}
+
+.watchlist-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.watchlist-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  border: 1px solid #d8e2eb;
+  border-radius: 999px;
+  background: #fff;
+  padding: 0 5px 0 11px;
+  color: #344352;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.watchlist-chip button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  padding: 0;
+  color: var(--muted);
 }
 
 .status-line {
@@ -478,20 +547,57 @@ button:hover {
   margin-top: 12px;
 }
 
-.analysis-block ul,
-.news-list {
+.analysis-block ul {
   margin: 0;
   padding-left: 18px;
   font-size: 13px;
 }
 
+.news-list {
+  display: grid;
+  gap: 8px;
+}
+
+.news-item {
+  border: 1px solid #e5edf4;
+  border-radius: 7px;
+  background: #f9fbfd;
+  padding: 8px;
+}
+
+.news-item div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px;
+  align-items: start;
+}
+
+.news-item span {
+  border-radius: 999px;
+  background: #edf3f8;
+  color: #425160;
+  padding: 2px 7px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .news-list a {
   color: var(--blue);
+  font-size: 13px;
+  font-weight: 800;
   text-decoration: none;
+  overflow-wrap: anywhere;
 }
 
 .news-list a:hover {
   text-decoration: underline;
+}
+
+.news-item p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .tags {
@@ -578,6 +684,43 @@ button:hover {
   font-weight: 700;
 }
 
+.holding-form {
+  margin-top: 12px;
+  border: 1px solid rgba(217, 225, 231, 0.92);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff, #f9fbfc);
+  padding: 11px;
+}
+
+.holding-form h3 {
+  margin: 0 0 9px;
+  font-size: 15px;
+}
+
+.holding-form label {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.holding-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.holding-form button {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 10px;
+  border-color: transparent;
+  background: linear-gradient(135deg, #cf3f32, #225ea8);
+  color: #fff;
+  font-weight: 800;
+}
+
 .wealth-list {
   display: grid;
   gap: 10px;
@@ -623,6 +766,7 @@ button:hover {
 
 @media (max-width: 1180px) {
   .dashboard-layout,
+  .entry-grid,
   .card-split {
     grid-template-columns: 1fr;
   }
@@ -657,6 +801,7 @@ button:hover {
   .sector-block,
   .news-block,
   .wealth-summary,
+  .holding-form-row,
   .links {
     grid-template-columns: 1fr;
   }

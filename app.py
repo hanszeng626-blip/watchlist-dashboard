@@ -5,6 +5,7 @@ import math
 import os
 import re
 import time
+import html as html_lib
 from dataclasses import dataclass
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -489,6 +490,43 @@ def news_search_link(query: str) -> str:
     return f"https://www.bing.com/news/search?q={quote(query)}&mkt=zh-CN"
 
 
+def clean_news_text(value: str | None) -> str:
+    text = html_lib.unescape(value or "")
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def trim_text(value: str, length: int = 92) -> str:
+    if len(value) <= length:
+        return value
+    return value[: length - 1].rstrip() + "…"
+
+
+def news_impact_label(text: str) -> str:
+    upper = text.upper()
+    rules = [
+        (("AI", "算力", "芯片", "数据中心", "GPU"), "产业催化"),
+        (("财报", "业绩", "收入", "利润", "指引", "盈利"), "业绩信号"),
+        (("政策", "监管", "关税", "降息", "利率"), "宏观政策"),
+        (("增持", "回购", "分红", "减持"), "资本动作"),
+        (("合作", "订单", "发布", "新品", "量产"), "经营进展"),
+        (("下跌", "调查", "诉讼", "风险", "亏损"), "风险事件"),
+    ]
+    for keywords, label in rules:
+        if any(keyword.upper() in upper for keyword in keywords):
+            return label
+    return "市场动态"
+
+
+def build_news_summary(title: str, description: str) -> str:
+    clean_title = clean_news_text(title)
+    clean_description = clean_news_text(description)
+    if clean_description and clean_description != clean_title:
+        return trim_text(clean_description)
+    return trim_text(clean_title)
+
+
 def fetch_news_items(query: str, limit: int = 3) -> list[dict]:
     key = query.strip().lower()
     now = time.time()
@@ -503,9 +541,14 @@ def fetch_news_items(query: str, limit: int = 3) -> list[dict]:
         root = ET.fromstring(response.content)
         items = []
         for item in root.findall(".//item")[:limit]:
+            title = item.findtext("title") or "新闻"
+            description = item.findtext("description") or ""
+            summary = build_news_summary(title, description)
             items.append(
                 {
-                    "title": item.findtext("title") or "新闻",
+                    "title": clean_news_text(title),
+                    "summary": summary,
+                    "impact": news_impact_label(f"{title} {description}"),
                     "url": item.findtext("link") or news_search_link(query),
                     "date": item.findtext("pubDate") or "",
                     "source": item.findtext("source") or "",
@@ -514,7 +557,16 @@ def fetch_news_items(query: str, limit: int = 3) -> list[dict]:
         NEWS_CACHE[key] = (now, items)
         return items
     except Exception:
-        fallback = [{"title": f"查看 {query} 最新新闻", "url": news_search_link(query), "date": "", "source": "Bing News"}]
+        fallback = [
+            {
+                "title": f"查看 {query} 最新新闻",
+                "summary": f"暂未抓取到可提炼摘要，点击查看 {query} 的实时新闻列表。",
+                "impact": "新闻入口",
+                "url": news_search_link(query),
+                "date": "",
+                "source": "Bing News",
+            }
+        ]
         NEWS_CACHE[key] = (now, fallback)
         return fallback
 

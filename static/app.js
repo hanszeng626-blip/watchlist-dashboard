@@ -7,12 +7,23 @@ const MARKET_META = {
 
 const form = document.querySelector("#watchlist-form");
 const symbolsInput = document.querySelector("#symbols");
+const entryMarketInput = document.querySelector("#entry-market");
+const entrySymbolInput = document.querySelector("#entry-symbol");
+const entryCostInput = document.querySelector("#entry-cost");
+const entrySharesInput = document.querySelector("#entry-shares");
 const statusLine = document.querySelector("#status-line");
 const summary = document.querySelector("#summary");
 const analyzeButton = document.querySelector("#analyze-button");
+const analyzeCurrentButton = document.querySelector("#analyze-current-button");
+const watchlistChips = document.querySelector("#watchlist-chips");
 const wealthSummary = document.querySelector("#wealth-summary");
 const wealthAdvice = document.querySelector("#wealth-advice");
 const wealthList = document.querySelector("#wealth-list");
+const holdingForm = document.querySelector("#holding-form");
+const holdingMarketInput = document.querySelector("#holding-market");
+const holdingSymbolInput = document.querySelector("#holding-symbol");
+const holdingCostInput = document.querySelector("#holding-cost");
+const holdingSharesInput = document.querySelector("#holding-shares");
 const groups = Object.fromEntries(MARKETS.map((market) => [market, document.querySelector(MARKET_META[market].group)]));
 const counts = Object.fromEntries(MARKETS.map((market) => [market, document.querySelector(MARKET_META[market].count)]));
 
@@ -21,13 +32,23 @@ let latestRecords = [];
 const storedSymbols = localStorage.getItem("watchlist.symbols");
 if (storedSymbols) {
   symbolsInput.value = storedSymbols;
+  renderWatchlistChips();
 }
 
 document.querySelectorAll("[data-sample]").forEach((button) => {
   button.addEventListener("click", () => {
     symbolsInput.value = button.dataset.sample;
+    renderWatchlistChips();
     form.requestSubmit();
   });
+});
+
+analyzeCurrentButton.addEventListener("click", () => {
+  if (!symbolsInput.value.trim()) {
+    setStatus("请先添加至少一只股票", true);
+    return;
+  }
+  form.requestSubmit();
 });
 
 document.querySelector("#clear-button").addEventListener("click", () => {
@@ -35,11 +56,26 @@ document.querySelector("#clear-button").addEventListener("click", () => {
   latestRecords = [];
   localStorage.removeItem("watchlist.symbols");
   renderResult(emptyPayload());
+  renderWatchlistChips();
   setStatus("已清空");
+});
+
+holdingForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  addHoldingFromWealthForm();
 });
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const entrySymbol = entrySymbolInput.value.trim();
+  if (entrySymbol) {
+    addStructuredEntry({
+      market: entryMarketInput.value,
+      symbol: entrySymbol,
+      cost: entryCostInput.value.trim(),
+      shares: entrySharesInput.value.trim(),
+    });
+  }
   const symbols = symbolsInput.value.trim();
   if (!symbols) {
     setStatus("请输入至少一只股票代码", true);
@@ -65,6 +101,17 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
+watchlistChips.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-remove-symbol]");
+  if (!button) return;
+  const removeToken = normalizeSymbolText(button.dataset.removeSymbol);
+  const nextTokens = splitSymbolText(symbolsInput.value).filter((token) => normalizeSymbolText(token) !== removeToken);
+  symbolsInput.value = nextTokens.join(" ");
+  localStorage.setItem("watchlist.symbols", symbolsInput.value.trim());
+  renderWatchlistChips();
+  form.requestSubmit();
+});
+
 function emptyPayload() {
   return { grouped: { "A股": [], "港股": [], "美股": [] }, records: [], errors: [], summary: { count: 0 } };
 }
@@ -82,6 +129,7 @@ function setStatus(message, isError = false) {
 function renderResult(payload) {
   const grouped = payload.grouped || emptyPayload().grouped;
   latestRecords = payload.records || Object.values(grouped).flat();
+  applyPendingHoldings(latestRecords);
 
   for (const market of MARKETS) {
     const records = grouped[market] || [];
@@ -92,10 +140,45 @@ function renderResult(payload) {
   }
 
   renderSummary(payload.summary || {});
+  renderWatchlistChips();
   bindPortfolioInputs();
   bindNotes();
   drawAllCharts();
   renderWealthPanel();
+}
+
+function addStructuredEntry({ market, symbol, cost, shares }) {
+  const formattedSymbol = formatSymbolForMarket(market, symbol);
+  if (Number(cost) > 0 && Number(shares) > 0) {
+    savePendingHolding(formattedSymbol, { cost, shares });
+  }
+  ensureSymbolInWatchlist(formattedSymbol);
+  entrySymbolInput.value = "";
+  entryCostInput.value = "";
+  entrySharesInput.value = "";
+}
+
+function formatSymbolForMarket(market, symbol) {
+  const text = String(symbol || "").trim().replace(/^\$/g, "").toUpperCase();
+  if (market === "美股") return text.replace(/\.US$/i, "");
+  if (market === "港股") {
+    const digits = text.replace(/^HK/i, "").replace(/\.HK$/i, "");
+    return `HK${digits.padStart(5, "0")}`;
+  }
+  const code = text.replace(/^(SH|SZ)/i, "");
+  if (/^(5|6|9)/.test(code)) return `SH${code}`;
+  return `SZ${code}`;
+}
+
+function renderWatchlistChips() {
+  const tokens = splitSymbolText(symbolsInput.value);
+  if (!tokens.length) {
+    watchlistChips.innerHTML = '<span class="muted-text">暂无自选股，按市场分列录入后自动加入。</span>';
+    return;
+  }
+  watchlistChips.innerHTML = tokens
+    .map((token) => `<span class="watchlist-chip">${escapeHtml(token)}<button type="button" data-remove-symbol="${escapeHtml(token)}">×</button></span>`)
+    .join("");
 }
 
 function renderSummary(data) {
@@ -217,12 +300,112 @@ function stockCard(record) {
 
 function newsList(items = []) {
   if (!items.length) {
-    return '<p class="muted-text">暂无新闻，建议点击新闻入口查看。</p>';
+    return '<p class="muted-text">暂无关键消息，建议点击新闻入口查看。</p>';
   }
-  return `<ul class="news-list">${items
+  return `<div class="news-list">${items
     .slice(0, 3)
-    .map((item) => `<li><a href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a></li>`)
-    .join("")}</ul>`;
+    .map(
+      (item) => `
+        <article class="news-item">
+          <div>
+            <span>${escapeHtml(item.impact || "市场动态")}</span>
+            <a href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a>
+          </div>
+          <p>${escapeHtml(item.summary || item.title)}</p>
+        </article>
+      `
+    )
+    .join("")}</div>`;
+}
+
+function addHoldingFromWealthForm() {
+  const symbol = holdingSymbolInput.value.trim();
+  const cost = holdingCostInput.value.trim();
+  const shares = holdingSharesInput.value.trim();
+  if (!symbol || !(Number(cost) > 0) || !(Number(shares) > 0)) {
+    setStatus("请填写股票代码、持股成本和持股数量", true);
+    return;
+  }
+
+  const holding = { cost, shares };
+  const formattedSymbol = formatSymbolForMarket(holdingMarketInput.value, symbol);
+  const record = findRecordBySymbol(formattedSymbol);
+  if (record) {
+    localStorage.setItem(holdingKey(record), JSON.stringify(holding));
+    syncVisibleHoldingInputs(record, holding);
+    renderWealthPanel();
+    setStatus(`已更新 ${record.name} 的持仓`);
+  } else {
+    savePendingHolding(formattedSymbol, holding);
+  }
+
+  ensureSymbolInWatchlist(formattedSymbol);
+  holdingSymbolInput.value = "";
+  holdingCostInput.value = "";
+  holdingSharesInput.value = "";
+  form.requestSubmit();
+}
+
+function ensureSymbolInWatchlist(symbol) {
+  const next = normalizeSymbolText(symbol);
+  const currentTokens = splitSymbolText(symbolsInput.value);
+  if (!currentTokens.some((token) => normalizeSymbolText(token) === next)) {
+    symbolsInput.value = [...currentTokens, symbol.trim()].join(" ");
+  }
+  localStorage.setItem("watchlist.symbols", symbolsInput.value.trim());
+}
+
+function savePendingHolding(symbol, holding) {
+  localStorage.setItem(`watchlist.pendingHolding.${normalizeSymbolText(symbol)}`, JSON.stringify(holding));
+}
+
+function applyPendingHoldings(records) {
+  Object.keys(localStorage)
+    .filter((key) => key.startsWith("watchlist.pendingHolding."))
+    .forEach((key) => {
+      const token = key.replace("watchlist.pendingHolding.", "");
+      const record = records.find((item) => symbolAliases(item).includes(token));
+      if (!record) return;
+      try {
+        localStorage.setItem(holdingKey(record), localStorage.getItem(key) || "{}");
+        localStorage.removeItem(key);
+      } catch {
+        localStorage.removeItem(key);
+      }
+    });
+}
+
+function findRecordBySymbol(symbol) {
+  const normalized = normalizeSymbolText(symbol);
+  return latestRecords.find((record) => symbolAliases(record).includes(normalized));
+}
+
+function symbolAliases(record) {
+  const raw = normalizeSymbolText(record.raw);
+  const code = normalizeSymbolText(record.code);
+  const shortCode = normalizeSymbolText(String(record.code || "").replace(/^(SZ|SH|HK)/i, ""));
+  const hkShort = record.market === "港股" ? normalizeSymbolText(String(Number(record.code?.replace(/^HK/i, "") || 0))) : "";
+  return [raw, code, shortCode, hkShort].filter(Boolean);
+}
+
+function normalizeSymbolText(value) {
+  return String(value || "").trim().replace(/^\$/g, "").replace(/\s+/g, "").toUpperCase();
+}
+
+function splitSymbolText(value) {
+  return String(value || "")
+    .split(/[\s,;，；、]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function syncVisibleHoldingInputs(record, holding) {
+  const key = holdingKey(record);
+  document.querySelectorAll(`.holding-input[data-key="${cssEscape(key)}"]`).forEach((input) => {
+    input.value = holding[input.dataset.field] || "";
+  });
+  const result = document.querySelector(`[data-holding-result="${cssEscape(key)}"]`);
+  if (result) result.innerHTML = holdingLine(record, holding);
 }
 
 function bindPortfolioInputs() {
