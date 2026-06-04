@@ -38,29 +38,48 @@
 
         <section class="status-line" id="status-line" aria-live="polite"></section>
 
-        <section class="market-section" data-market="A股">
-          <div class="section-head">
-            <h2>A股</h2>
-            <span id="count-a">0</span>
-          </div>
-          <div class="stock-grid" id="group-a"></div>
-        </section>
+        <div class="dashboard-layout">
+          <section class="analysis-column" aria-label="自选股分析">
+            <section class="market-section market-a" data-market="A股">
+              <div class="section-head">
+                <h2>A股</h2>
+                <span id="count-a">0</span>
+              </div>
+              <div class="stock-grid" id="group-a"></div>
+            </section>
 
-        <section class="market-section" data-market="港股">
-          <div class="section-head">
-            <h2>港股</h2>
-            <span id="count-hk">0</span>
-          </div>
-          <div class="stock-grid" id="group-hk"></div>
-        </section>
+            <section class="market-section market-hk" data-market="港股">
+              <div class="section-head">
+                <h2>港股</h2>
+                <span id="count-hk">0</span>
+              </div>
+              <div class="stock-grid" id="group-hk"></div>
+            </section>
 
-        <section class="market-section" data-market="美股">
-          <div class="section-head">
-            <h2>美股</h2>
-            <span id="count-us">0</span>
-          </div>
-          <div class="stock-grid" id="group-us"></div>
-        </section>
+            <section class="market-section market-us" data-market="美股">
+              <div class="section-head">
+                <h2>美股</h2>
+                <span id="count-us">0</span>
+              </div>
+              <div class="stock-grid" id="group-us"></div>
+            </section>
+          </section>
+
+          <aside class="wealth-panel" aria-label="财富管理">
+            <div class="wealth-head">
+              <p class="eyebrow">Portfolio</p>
+              <h2>财富管理</h2>
+            </div>
+            <div class="wealth-summary" id="wealth-summary">
+              <div><span>总市值</span><strong>-</strong></div>
+              <div><span>总成本</span><strong>-</strong></div>
+              <div><span>总盈亏</span><strong>-</strong></div>
+              <div><span>总体收益率</span><strong>-</strong></div>
+            </div>
+            <div class="wealth-advice" id="wealth-advice">等待输入持仓后生成财富管理建议。</div>
+            <div class="wealth-list" id="wealth-list"></div>
+          </aside>
+        </div>
       </section>
     </main>
     <script src="/app.js"></script>
