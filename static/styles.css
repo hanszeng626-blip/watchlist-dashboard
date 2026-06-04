@@ -642,6 +642,64 @@ button:hover {
   color: var(--muted);
 }
 
+.sector-movers {
+  margin-top: 10px;
+  border-top: 1px solid #e5edf4;
+  padding-top: 9px;
+}
+
+.sector-movers h5 {
+  margin: 0 0 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sector-mover-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto auto;
+  gap: 7px;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 6px;
+  padding: 3px 6px;
+  background: #f8fafc;
+  font-size: 12px;
+}
+
+.sector-mover-row + .sector-mover-row {
+  margin-top: 5px;
+}
+
+.sector-mover-row span {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #edf3f8;
+  color: #50606f;
+  font-weight: 800;
+}
+
+.sector-mover-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sector-mover-row em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+.sector-mover-row b {
+  font-weight: 900;
+}
+
+.sector-mover-empty {
+  margin: 10px 0 0;
+}
+
 .note-block {
   margin-top: 12px;
 }

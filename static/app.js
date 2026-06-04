@@ -265,6 +265,7 @@ function stockCard(record) {
           <h4>板块 / 概念</h4>
           <p>${escapeHtml(sector.sector || "-")}</p>
           <div class="tags">${(sector.concepts || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
+          ${sectorMoversList(record.sector_movers)}
         </div>
         <div>
           <h4>美股映射</h4>
@@ -295,6 +296,31 @@ function stockCard(record) {
           .join("")}
       </nav>
     </article>
+  `;
+}
+
+function sectorMoversList(items = []) {
+  if (!items.length) {
+    return '<p class="muted-text sector-mover-empty">暂无相关个股涨幅数据</p>';
+  }
+  return `
+    <div class="sector-movers">
+      <h5>相关个股涨幅 Top5</h5>
+      ${items
+        .slice(0, 5)
+        .map((item, index) => {
+          const pctClass = item.pct > 0 ? "up" : item.pct < 0 ? "down" : "flat";
+          return `
+            <div class="sector-mover-row">
+              <span>${index + 1}</span>
+              <strong>${escapeHtml(item.name)}</strong>
+              <em>${escapeHtml(item.code)}</em>
+              <b class="${pctClass}">${formatSigned(item.pct, "%")}</b>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
   `;
 }
 

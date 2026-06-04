@@ -21,6 +21,8 @@ STATIC_DIR = ROOT / "static"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 NEWS_CACHE: dict[str, tuple[float, list[dict]]] = {}
 NEWS_TTL_SECONDS = 30 * 60
+QUOTE_CACHE: dict[str, tuple[float, dict]] = {}
+QUOTE_TTL_SECONDS = 60
 
 
 @dataclass(frozen=True)
@@ -105,6 +107,11 @@ def get_text(url: str) -> str:
 
 
 def fetch_quote(symbol: Symbol) -> dict:
+    cached = QUOTE_CACHE.get(symbol.quote_code)
+    now = time.time()
+    if cached and now - cached[0] < QUOTE_TTL_SECONDS:
+        return dict(cached[1])
+
     text = get_text(f"https://qt.gtimg.cn/q={symbol.quote_code}")
     if "v_pv_none_match" in text:
         raise ValueError("腾讯行情接口未匹配到该代码")
@@ -118,7 +125,7 @@ def fetch_quote(symbol: Symbol) -> dict:
     amount = to_float(arr[37] if len(arr) > 37 else None)
     volume = to_float(arr[36] if len(arr) > 36 else None) or to_float(arr[6] if len(arr) > 6 else None)
 
-    return {
+    quote_data = {
         "name": arr[1] if len(arr) > 1 else symbol.display_code,
         "code": symbol.display_code,
         "market": symbol.market,
@@ -136,6 +143,8 @@ def fetch_quote(symbol: Symbol) -> dict:
         "pb": to_float(arr[46] if len(arr) > 46 else None),
         "source": f"https://qt.gtimg.cn/q={symbol.quote_code}",
     }
+    QUOTE_CACHE[symbol.quote_code] = (now, quote_data)
+    return dict(quote_data)
 
 
 def fetch_tencent_history(symbol: Symbol, days: int = 120) -> list[dict]:
@@ -405,42 +414,49 @@ def sector_profile(symbol: Symbol, quote_data: dict) -> dict:
             "sector": "光通信与AI算力",
             "concepts": ["光模块", "CPO", "数据中心", "AI算力基础设施"],
             "us_peers": ["NVDA", "AVGO", "MRVL", "LITE", "COHR"],
+            "related_symbols": ["300620", "300308", "300502", "300394", "603083", "002281", "000988", "688498"],
         },
         {
             "tokens": ["腾讯", "阿里", "美团", "京东", "BABA", "TCEHY", "PDD"],
             "sector": "互联网平台",
             "concepts": ["云计算", "游戏", "广告", "本地生活", "电商平台"],
             "us_peers": ["META", "GOOGL", "AMZN", "MSFT", "NFLX"],
+            "related_symbols": ["HK00700", "HK09988", "HK03690", "HK09618", "BABA", "PDD", "JD"],
         },
         {
             "tokens": ["苹果", "AAPL"],
             "sector": "消费电子与AI终端",
             "concepts": ["AI手机", "消费电子", "生态服务", "端侧AI"],
             "us_peers": ["MSFT", "GOOGL", "META", "QCOM", "AVGO"],
+            "related_symbols": ["AAPL", "QCOM", "AVGO", "002475", "300433", "601138", "002241"],
         },
         {
             "tokens": ["特斯拉", "TSLA", "比亚迪", "宁德", "理想", "蔚来", "小鹏"],
             "sector": "新能源车与智能驾驶",
             "concepts": ["电动车", "动力电池", "智能驾驶", "储能"],
             "us_peers": ["TSLA", "RIVN", "GM", "F", "ALB"],
+            "related_symbols": ["TSLA", "002594", "300750", "HK02015", "NIO", "XPEV", "RIVN"],
         },
         {
             "tokens": ["英伟达", "NVDA", "AMD", "博通", "AVGO", "台积电", "TSM"],
             "sector": "半导体与AI芯片",
             "concepts": ["AI芯片", "GPU", "先进制程", "服务器"],
             "us_peers": ["NVDA", "AMD", "AVGO", "TSM", "ASML"],
+            "related_symbols": ["NVDA", "AMD", "AVGO", "TSM", "ASML", "688981", "603986"],
         },
         {
             "tokens": ["茅台", "五粮", "泸州", "DEO"],
             "sector": "消费与品牌白酒",
             "concepts": ["高端消费", "品牌护城河", "渠道库存"],
             "us_peers": ["DEO", "BUD", "KO", "PEP", "MNST"],
+            "related_symbols": ["600519", "000858", "000568", "600809", "DEO", "BUD"],
         },
         {
             "tokens": ["恒瑞", "迈瑞", "药明", "LLY", "PFE", "JNJ", "MRK"],
             "sector": "医药医疗",
             "concepts": ["创新药", "医疗器械", "CXO", "医保政策"],
             "us_peers": ["LLY", "PFE", "JNJ", "MRK", "TMO"],
+            "related_symbols": ["600276", "300760", "603259", "LLY", "PFE", "JNJ", "MRK", "TMO"],
         },
     ]
 
@@ -457,18 +473,21 @@ def sector_profile(symbol: Symbol, quote_data: dict) -> dict:
                 "sector": "美股综合行业",
                 "concepts": ["行业龙头", "盈利预期", "利率敏感", "美元资产"],
                 "us_peers": ["SPY", "QQQ", "DIA", "IWM"],
+                "related_symbols": ["SPY", "QQQ", "DIA", "IWM"],
             }
         elif symbol.market == "港股":
             selected = {
                 "sector": "港股核心资产",
                 "concepts": ["南向资金", "估值修复", "港股流动性"],
                 "us_peers": ["KWEB", "FXI", "MCHI", "ASHR"],
+                "related_symbols": ["HK00700", "HK09988", "HK03690", "HK09618", "KWEB", "FXI"],
             }
         else:
             selected = {
                 "sector": "A股综合行业",
                 "concepts": ["产业政策", "资金风格", "业绩预期"],
                 "us_peers": ["ASHR", "MCHI", "KWEB", "FXI"],
+                "related_symbols": ["600519", "300750", "002594", "601318", "ASHR", "MCHI"],
             }
 
     query = f"{selected['sector']} {name}"
@@ -476,6 +495,7 @@ def sector_profile(symbol: Symbol, quote_data: dict) -> dict:
         "sector": selected["sector"],
         "concepts": selected["concepts"],
         "us_peers": selected["us_peers"],
+        "related_symbols": selected.get("related_symbols", []),
         "mapping_note": "美股映射用于寻找全球同产业链或同商业模式参照，不代表估值完全可比。",
         "news_query": query,
         "links": {
@@ -484,6 +504,34 @@ def sector_profile(symbol: Symbol, quote_data: dict) -> dict:
             "美股映射": f"https://finance.yahoo.com/lookup?s={quote(' '.join(selected['us_peers']))}",
         },
     }
+
+
+def build_sector_movers(sector: dict, current_code: str, limit: int = 5) -> list[dict]:
+    current = current_code.upper()
+    movers: list[dict] = []
+    for raw in sector.get("related_symbols", []):
+        try:
+            parsed = parse_symbol(raw)
+            if parsed.display_code.upper() == current:
+                continue
+            quote_data = fetch_quote(parsed)
+            pct = quote_data.get("pct")
+            if pct is None:
+                continue
+            movers.append(
+                {
+                    "name": quote_data.get("name") or parsed.display_code,
+                    "code": quote_data.get("code") or parsed.display_code,
+                    "market": quote_data.get("market") or parsed.market,
+                    "price": quote_data.get("price"),
+                    "pct": pct,
+                    "change": quote_data.get("change"),
+                }
+            )
+        except Exception:
+            continue
+
+    return sorted(movers, key=lambda item: item.get("pct") or -999, reverse=True)[:limit]
 
 
 def news_search_link(query: str) -> str:
@@ -795,6 +843,7 @@ def analyze_one(raw: str) -> dict:
         "projection": trend_projection(history),
         "history": recent_history(history),
         "sector": sector,
+        "sector_movers": build_sector_movers(sector, quote_data.get("code") or symbol.display_code),
         "news": fetch_news_items(news_query, symbol=symbol),
         "sector_news": fetch_news_items(sector["news_query"]),
         "news_links": {
