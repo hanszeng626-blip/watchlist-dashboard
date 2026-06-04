@@ -490,6 +490,18 @@ def news_search_link(query: str) -> str:
     return f"https://www.bing.com/news/search?q={quote(query)}&mkt=zh-CN"
 
 
+def google_news_rss_link(query: str) -> str:
+    return f"https://news.google.com/rss/search?q={quote(query + ' when:30d')}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans"
+
+
+def bing_news_rss_link(query: str) -> str:
+    return f"https://www.bing.com/news/search?q={quote(query)}&format=RSS&mkt=en-US"
+
+
+def yahoo_finance_rss_link(symbol_code: str) -> str:
+    return f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={quote(symbol_code)}&region=US&lang=en-US"
+
+
 def clean_news_text(value: str | None) -> str:
     text = html_lib.unescape(value or "")
     text = re.sub(r"<[^>]+>", " ", text)
@@ -519,56 +531,139 @@ def news_impact_label(text: str) -> str:
     return "市场动态"
 
 
-def build_news_summary(title: str, description: str) -> str:
+def news_takeaway(title: str, impact: str) -> str:
+    prefixes = {
+        "产业催化": "关注产业催化和相关产业链扩散效应",
+        "业绩信号": "关注财报、盈利预期或机构评级变化",
+        "宏观政策": "关注政策、利率或监管变量对估值的影响",
+        "资本动作": "关注回购、分红、增减持等资本动作",
+        "经营进展": "关注订单、合作、新品或业务进展",
+        "风险事件": "关注事件风险是否影响趋势和仓位纪律",
+    }
+    prefix = prefixes.get(impact, "关注市场情绪和资金关注度变化")
+    return trim_text(f"{prefix}：{clean_news_text(title)}")
+
+
+def build_news_summary(title: str, description: str, impact: str = "市场动态", source: str = "") -> str:
     clean_title = clean_news_text(title)
     clean_description = clean_news_text(description)
-    if clean_description and clean_description != clean_title:
+    clean_source = clean_news_text(source)
+    if clean_source:
+        clean_description = clean_description.replace(clean_source, "").strip(" -_｜|")
+    if clean_description.startswith(clean_title):
+        clean_description = clean_description[len(clean_title) :].strip(" -_｜|")
+    if clean_description and clean_description != clean_title and len(clean_description) >= 18:
         return trim_text(clean_description)
-    return trim_text(clean_title)
+    return news_takeaway(clean_title, impact)
 
 
-def fetch_news_items(query: str, limit: int = 3) -> list[dict]:
-    key = query.strip().lower()
+def source_from_title(title: str, source: str) -> str:
+    if source:
+        return clean_news_text(source)
+    if " - " in title:
+        return clean_news_text(title.rsplit(" - ", 1)[-1])
+    return ""
+
+
+def title_without_source(title: str, source: str) -> str:
+    clean_title = clean_news_text(title)
+    clean_source = clean_news_text(source)
+    if clean_source and clean_title.endswith(f" - {clean_source}"):
+        return clean_title[: -len(clean_source) - 3].strip()
+    return clean_title
+
+
+def parse_rss_items(url: str, query: str, limit: int) -> list[dict]:
+    response = requests.get(
+        url,
+        headers={
+            **HEADERS,
+            "Accept": "application/rss+xml, application/xml, text/xml, text/html",
+        },
+        timeout=10,
+    )
+    response.raise_for_status()
+    content_type = response.headers.get("content-type", "")
+    if "html" in content_type.lower() and not response.text.lstrip().startswith("<?xml"):
+        return []
+
+    root = ET.fromstring(response.content)
+    items: list[dict] = []
+    for item in root.findall(".//item"):
+        title = item.findtext("title") or "新闻"
+        description = item.findtext("description") or ""
+        source = source_from_title(title, item.findtext("source") or "")
+        clean_title = title_without_source(title, source)
+        impact = news_impact_label(f"{clean_title} {description}")
+        summary = build_news_summary(clean_title, description, impact, source)
+        if not clean_title or clean_title == "新闻":
+            continue
+        items.append(
+            {
+                "title": clean_title,
+                "summary": summary,
+                "impact": impact,
+                "url": item.findtext("link") or news_search_link(query),
+                "date": item.findtext("pubDate") or "",
+                "source": source,
+            }
+        )
+        if len(items) >= limit:
+            break
+    return items
+
+
+def dedupe_news(items: list[dict], limit: int) -> list[dict]:
+    seen: set[str] = set()
+    clean: list[dict] = []
+    for item in items:
+        key = re.sub(r"\W+", "", item.get("title", "").lower())
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        clean.append(item)
+        if len(clean) >= limit:
+            break
+    return clean
+
+
+def fetch_news_items(query: str, limit: int = 3, symbol: Symbol | None = None) -> list[dict]:
+    key = f"{symbol.market if symbol else ''}:{symbol.code if symbol else ''}:{query}".strip().lower()
     now = time.time()
     cached = NEWS_CACHE.get(key)
     if cached and now - cached[0] < NEWS_TTL_SECONDS:
         return cached[1][:limit]
 
-    try:
-        url = f"https://www.bing.com/news/search?q={quote(query)}&format=rss&mkt=zh-CN"
-        response = requests.get(url, headers=HEADERS, timeout=8)
-        response.raise_for_status()
-        root = ET.fromstring(response.content)
-        items = []
-        for item in root.findall(".//item")[:limit]:
-            title = item.findtext("title") or "新闻"
-            description = item.findtext("description") or ""
-            summary = build_news_summary(title, description)
-            items.append(
-                {
-                    "title": clean_news_text(title),
-                    "summary": summary,
-                    "impact": news_impact_label(f"{title} {description}"),
-                    "url": item.findtext("link") or news_search_link(query),
-                    "date": item.findtext("pubDate") or "",
-                    "source": item.findtext("source") or "",
-                }
-            )
-        NEWS_CACHE[key] = (now, items)
-        return items
-    except Exception:
-        fallback = [
+    urls: list[str] = []
+    if symbol and symbol.market == "美股":
+        urls.append(yahoo_finance_rss_link(symbol.code))
+    urls.append(google_news_rss_link(query))
+    urls.append(bing_news_rss_link(query))
+
+    items: list[dict] = []
+    for url in urls:
+        try:
+            items.extend(parse_rss_items(url, query, limit))
+            items = dedupe_news(items, limit)
+            if len(items) >= limit:
+                break
+        except Exception:
+            continue
+
+    if not items:
+        items = [
             {
                 "title": f"查看 {query} 最新新闻",
                 "summary": f"暂未抓取到可提炼摘要，点击查看 {query} 的实时新闻列表。",
                 "impact": "新闻入口",
                 "url": news_search_link(query),
                 "date": "",
-                "source": "Bing News",
+                "source": "News Search",
             }
         ]
-        NEWS_CACHE[key] = (now, fallback)
-        return fallback
+
+    NEWS_CACHE[key] = (now, items)
+    return items[:limit]
 
 
 def build_score(quote_data: dict, ind: dict) -> int:
@@ -684,7 +779,10 @@ def analyze_one(raw: str) -> dict:
     ind = indicators(history, quote_data.get("price"))
     score = build_score(quote_data, ind)
     sector = sector_profile(symbol, quote_data)
-    news_query = f"{quote_data.get('name') or symbol.display_code} 股票 最新 动态"
+    if symbol.market == "美股":
+        news_query = f"{symbol.code} stock news latest earnings"
+    else:
+        news_query = f"{quote_data.get('name') or symbol.display_code} 股票 最新 动态"
     return {
         **quote_data,
         "raw": raw,
@@ -697,7 +795,7 @@ def analyze_one(raw: str) -> dict:
         "projection": trend_projection(history),
         "history": recent_history(history),
         "sector": sector,
-        "news": fetch_news_items(news_query),
+        "news": fetch_news_items(news_query, symbol=symbol),
         "sector_news": fetch_news_items(sector["news_query"]),
         "news_links": {
             "个股新闻": news_search_link(news_query),
